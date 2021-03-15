@@ -1,6 +1,6 @@
 # Import Splinter, BeautifulSoup, and Pandas
 from splinter import Browser
-from bs4 import BeautifulSoup as soup
+from bs4 import BeautifulSoup
 import pandas as pd
 import datetime as dt
 
@@ -11,15 +11,18 @@ def scrape_all():
 
     news_title, news_paragraph = mars_news(browser)
 
+    hemisphere_image_urls = hemispheres(browser)
+
     # Run all scraping functions and store results in a dictionary
     data = {
         "news_title": news_title,
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
-        "last_modified": dt.datetime.now()
+        "last_modified": dt.datetime.now(),
+        "hemispheres": hemisphere_image_urls
     }
-
+    
     # Stop webdriver and return data
     browser.quit()
     return data
@@ -37,7 +40,7 @@ def mars_news(browser):
 
     # Convert the browser html to a soup object and then quit the browser
     html = browser.html
-    news_soup = soup(html, 'html.parser')
+    news_soup = BeautifulSoup(html, 'html.parser')
 
     # Add try/except for error handling
     try:
@@ -64,7 +67,7 @@ def featured_image(browser):
 
     # Parse the resulting html with soup
     html = browser.html
-    img_soup = soup(html, 'html.parser')
+    img_soup = BeautifulSoup(html, 'html.parser')
 
     # Add try/except for error handling
     try:
@@ -94,6 +97,33 @@ def mars_facts():
 
     # Convert dataframe into HTML format, add bootstrap
     return df.to_html(classes="table table-striped")
+
+def hemispheres(browser):
+    # 1. Use browser to visit the URL 
+    url = 'https://astrogeology.usgs.gov/search/results?q=hemisphere+enhanced&k1=target&v1=Mars'
+    browser.visit(url)
+    html = browser.html
+    soup = BeautifulSoup(html, 'html.parser')
+
+    # 2. Create a list to hold the images and titles.
+    hemisphere_image_urls = []
+
+    products = soup.find("div", class_ = "result-list" )
+    hemispheres = products.find_all("div", class_="item")
+
+    for h in hemispheres:
+        hemispheres = {}
+        title = h.find("h3").text
+        end_link = h.find("a")["href"]
+        image_link = "https://astrogeology.usgs.gov/" + end_link    
+        browser.visit(image_link)
+        html = browser.html
+        soup = BeautifulSoup(html, "html.parser")
+        downloads = soup.find("div", class_="downloads")
+        image_url = downloads.find("a")["href"]
+        hemisphere_image_urls.append({"title": title, "img_url": image_url})
+    
+    return hemisphere_image_urls
 
 if __name__ == "__main__":
 
